@@ -49,6 +49,8 @@ jobs:
         with:
           sarif_file: reports/semgrep-results.sarif
 
+      - name: ls
+        run: ls -la reports
           
       - name: Upload Semgrep Results
         uses: actions/upload-artifact@v4
@@ -56,6 +58,24 @@ jobs:
           name: semgrep-results
           path: reports/semgrep-results.sarif
           retention-days: 14
+
+      - name: ls
+        run: ls -la reports
+          
+      - name: Create Pull Request with fixes
+        uses: peter-evans/create-pull-request@v7
+        with:
+          token: ${{ github.token }}
+          commit-message: 'fix: auto-fixes from semgrep'
+          title: 'Semgrep Auto-fixes'
+          body: |
+            Автоматические исправления от Semgrep security scan
+            
+            Этот PR содержит автоматические исправления проблем безопасности, найденных Semgrep.
+            Пожалуйста, проверьте изменения перед merge.
+          branch: semgrep-fixes
+          base: main
+          delete-branch: true
 
   zap_scan:
     needs: build
@@ -102,18 +122,26 @@ jobs:
       - name: Create reports directory
         run: mkdir -p reports
 
-      - name: Run Grype
-        uses: anchore/scan-action@v3
-        id: scan
+      - name: Run Dependency Check
+        uses: dependency-check/Dependency-Check_Action@main
+        id: Depcheck
         with:
-          path: "."
-          output-file: reports/dependency-check-report.html
+          project: 'test'
+          path: '.'
+          format: 'HTML'
+          out: 'reports'
+          args: >
+            --failOnCVSS 7
+            --enableRetired
 
-      - name: Upload Grype Results
-        uses: actions/upload-artifact@v3
+      - name: ls
+        run: ls -la reports
+    
+      - name: Upload Dependency Check results
+        uses: actions/upload-artifact@v4
         with:
           name: dependency-check-results
-          path: reports/dependency-check-report.html
+          path: reports/*
           retention-days: 14
 
   publish_security_reports:
@@ -127,6 +155,9 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           path: combined-reports
+
+      - name: ls
+        run: ls -la combined-reports
 
       - name: Prepare reports
         run: |
